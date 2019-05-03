@@ -1,13 +1,28 @@
 package com.padas2.bitbucket.supportzip;
 
+import com.jcabi.aspects.Timeable;
 import com.padas2.bitbucket.supportzip.api.BitbucketSupportZipTaskStatus;
 import com.padas2.bitbucket.supportzip.api.GitServerDetails;
 import com.padas2.bitbucket.supportzip.components.BitbucketSupportZipCreator;
 import com.padas2.bitbucket.supportzip.components.BitbucketSupportZipDownloader;
 import com.padas2.bitbucket.supportzip.components.BitbucketSupportZipTaskStatusGetter;
+import org.apache.http.HttpEntity;
+import org.apache.http.HttpResponse;
 import org.apache.http.auth.AuthenticationException;
+import org.apache.http.auth.UsernamePasswordCredentials;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.impl.auth.BasicScheme;
+import org.apache.http.impl.client.HttpClientBuilder;
 import java.io.File;
 import java.io.IOException;
+import java.sql.Time;
+import java.util.Date;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.logging.Logger;
 
 public class BitbucketSupportZipEngine implements Runnable{
     private GitServerDetails gitServerDetails;
@@ -99,7 +114,25 @@ public class BitbucketSupportZipEngine implements Runnable{
         return taskStatusGetter;
     }
 
+    private void checkBitbucketServerStatus() throws IOException, AuthenticationException{
+        try {
+            System.out.println("Triggered check");
+            String url = gitServerDetails.getGitHostUrl();
+            HttpClient client = HttpClientBuilder.create().build();
+            UsernamePasswordCredentials creds = new UsernamePasswordCredentials(gitServerDetails.getGitUser(), gitServerDetails.getGitPassWord());
+            HttpGet request = new HttpGet(url);
+            request.addHeader(new BasicScheme().authenticate(creds, request, null));
+            HttpResponse response = client.execute(request);
+            response.getStatusLine().getStatusCode();
+            System.out.println("Check successful");
+        } catch (AuthenticationException | IOException a) {
+            Logger.getGlobal().warning(a.toString());
+            throw a;
+        }
+    }
+
     public void start() throws IOException, AuthenticationException {
+        checkBitbucketServerStatus();
         String supportZipTaskId = triggerZipCreation();
         BitbucketSupportZipTaskStatusGetter taskStatusGetter = getTaskStatusGetter(supportZipTaskId);
         BitbucketSupportZipTaskStatus status  = waitTillZipIsCreated(taskStatusGetter);
@@ -121,14 +154,6 @@ public class BitbucketSupportZipEngine implements Runnable{
     public static void main(String[] args) throws IOException, AuthenticationException{
         GitServerDetails gitServerDetails = new GitServerDetails();
         BitbucketSupportZipEngine b = new BitbucketSupportZipEngine(gitServerDetails);
-        Thread t1 = new Thread(b);
-        t1.start();
-        System.out.println("Printing from the Main method : " + b.state());
-        try {
-            Thread.currentThread().sleep(20000);
-        } catch (InterruptedException ie) {
-            ie.printStackTrace();
-        }
-        System.out.println("Good Bye... and the final result dir is : " + b.getFinalResultDir().getAbsolutePath());
+        b.start();
     }
 }
