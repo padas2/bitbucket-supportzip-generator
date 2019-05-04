@@ -1,7 +1,8 @@
 package com.padas2.bitbucket.supportzip.components;
 
-import com.padas2.bitbucket.supportzip.api.GitServerDetails;
-import org.apache.http.HttpEntity;
+import com.padas2.bitbucket.supportzip.BitbucketSupportTimedLimitedInteraction;
+import com.padas2.bitbucket.supportzip.response.BitbucketSupportZipCreatorResponse;
+import com.padas2.bitbucket.supportzip.api.BitbucketServerDetails;
 import org.apache.http.HttpResponse;
 import org.apache.http.auth.AuthenticationException;
 import org.apache.http.auth.UsernamePasswordCredentials;
@@ -9,51 +10,30 @@ import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.impl.auth.BasicScheme;
 import org.apache.http.impl.client.HttpClientBuilder;
-import org.apache.http.util.EntityUtils;
 import org.json.JSONObject;
-
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.util.logging.Logger;
 
-public class BitbucketSupportZipCreator {
-    public BitbucketSupportZipCreator() {
+public class BitbucketSupportZipCreator extends BitbucketSupportTimedLimitedInteraction {
+    public BitbucketSupportZipCreator(BitbucketServerDetails bitbucketServerDetails) {
+        super(bitbucketServerDetails);
     }
 
-    public GitServerDetails getGitServerDetails() {
-        return gitServerDetails;
-    }
-
-    public void setGitServerDetails(GitServerDetails gitServerDetails) {
-        this.gitServerDetails = gitServerDetails;
-    }
-
-    private GitServerDetails gitServerDetails;
-
-    public BitbucketSupportZipCreator(GitServerDetails gitServerDetails) {
-        this.gitServerDetails = gitServerDetails;
-    }
-
-    public String triggerSupportZipCreation() {
-        String taskId = null;
+    @Override
+    public void mainMethod() {
         try {
-            String url = gitServerDetails.getGitHostUrl() + "/rest/troubleshooting/latest/support-zip/local";
+            String url = bitbucketServerDetails.getGitHostUrl() + "/rest/troubleshooting/latest/support-zip/local";
             HttpClient client = HttpClientBuilder.create().build();
             HttpPost post = new HttpPost(url);
             post.setHeader("X-Atlassian-Token", "no-check");
-            UsernamePasswordCredentials creds = new UsernamePasswordCredentials(gitServerDetails.getGitUser(), gitServerDetails.getGitPassWord());
+            UsernamePasswordCredentials creds = new UsernamePasswordCredentials(bitbucketServerDetails.getGitUser(), bitbucketServerDetails.getGitPassWord());
             post.addHeader(new BasicScheme().authenticate(creds, post, null));
             HttpResponse response = client.execute(post);
-            HttpEntity entity = response.getEntity();
-            String json = EntityUtils.toString(entity, StandardCharsets.UTF_8);
-            JSONObject jsonObject = new JSONObject(json);
-            System.out.println(jsonObject);
-            taskId = (String)jsonObject.get("taskId");
+            JSONObject jsonObject = getJsonObjectFromResponse(response);
+            bitbucketRestApiResponse = new BitbucketSupportZipCreatorResponse(jsonObject);
         } catch (AuthenticationException a) {
-            Logger.getGlobal().warning(a.toString());
+            authenticationException = a;
         } catch (IOException io) {
-            Logger.getGlobal().warning(io.toString());
+            ioException = io;
         }
-        return taskId;
     }
 }

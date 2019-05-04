@@ -1,9 +1,9 @@
 package com.padas2.bitbucket.supportzip.api;
 
-public class GitServerDetails {
-    private String gitHostUrl = "https://git.pega.io";
-    private String gitUser = "padas2";
-    private String gitPassWord = "Uncertain@2020";
+public class BitbucketServerDetails {
+    private String gitHostUrl = "http://localhost:7990";
+    private String gitUser = "a";
+    private String gitPassWord = "b";
 
     public String getGitHostUrl() {
         return gitHostUrl;

@@ -1,7 +1,8 @@
 package com.padas2.bitbucket.supportzip.components;
 
-import com.padas2.bitbucket.supportzip.api.BitbucketSupportZipTaskStatus;
-import com.padas2.bitbucket.supportzip.api.GitServerDetails;
+import com.padas2.bitbucket.supportzip.BitbucketSupportTimedLimitedInteraction;
+import com.padas2.bitbucket.supportzip.response.BitbucketSupportZipTaskStatusResponse;
+import com.padas2.bitbucket.supportzip.api.BitbucketServerDetails;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.auth.AuthenticationException;
@@ -12,45 +13,24 @@ import org.apache.http.impl.auth.BasicScheme;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.util.EntityUtils;
 import org.json.JSONObject;
-
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.logging.Logger;
 
-public class BitbucketSupportZipTaskStatusGetter {
+public class BitbucketSupportZipTaskStatusGetter extends BitbucketSupportTimedLimitedInteraction {
     private String taskId;
-    private GitServerDetails gitServerDetails;
 
-    public BitbucketSupportZipTaskStatusGetter() {
-    }
-
-    public String getTaskId() {
-        return taskId;
-    }
-
-    public void setTaskId(String taskId) {
+    public BitbucketSupportZipTaskStatusGetter(BitbucketServerDetails bitbucketServerDetails,
+                                               String taskId) {
+        super(bitbucketServerDetails);
         this.taskId = taskId;
     }
 
-    public GitServerDetails getGitServerDetails() {
-        return gitServerDetails;
-    }
-
-    public void setGitServerDetails(GitServerDetails gitServerDetails) {
-        this.gitServerDetails = gitServerDetails;
-    }
-
-    public BitbucketSupportZipTaskStatusGetter(String taskId, GitServerDetails gitServerDetails) {
-        this.taskId = taskId;
-        this.gitServerDetails = gitServerDetails;
-    }
-
-    public BitbucketSupportZipTaskStatus getStatus() {
-        BitbucketSupportZipTaskStatus zipTaskStatus = null;
+    @Override
+    public void mainMethod() {
         try {
-            String url = gitServerDetails.getGitHostUrl() + "/rest/troubleshooting/latest/support-zip/status/task/" + taskId;
+            String url = bitbucketServerDetails.getGitHostUrl() + "/rest/troubleshooting/latest/support-zip/status/task/" + taskId;
             HttpClient client = HttpClientBuilder.create().build();
-            UsernamePasswordCredentials creds = new UsernamePasswordCredentials(gitServerDetails.getGitUser(), gitServerDetails.getGitPassWord());
+            UsernamePasswordCredentials creds = new UsernamePasswordCredentials(bitbucketServerDetails.getGitUser(), bitbucketServerDetails.getGitPassWord());
             HttpGet request = new HttpGet(url);
             request.addHeader(new BasicScheme().authenticate(creds, request, null));
             request.setHeader("X-Atlassian-Token", "no-check");
@@ -58,12 +38,11 @@ public class BitbucketSupportZipTaskStatusGetter {
             HttpEntity entity = response.getEntity();
             String json = EntityUtils.toString(entity, StandardCharsets.UTF_8);
             JSONObject jsonObject = new JSONObject(json);
-            zipTaskStatus = new BitbucketSupportZipTaskStatus(jsonObject);
+            bitbucketRestApiResponse = new BitbucketSupportZipTaskStatusResponse(jsonObject);
         } catch (AuthenticationException a) {
-            Logger.getGlobal().warning(a.toString());
+            authenticationException = a;
         } catch (IOException io) {
-            Logger.getGlobal().warning(io.toString());
+            ioException = io;
         }
-        return zipTaskStatus;
     }
 }

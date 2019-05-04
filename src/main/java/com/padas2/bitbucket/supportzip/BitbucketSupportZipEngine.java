@@ -1,37 +1,25 @@
 package com.padas2.bitbucket.supportzip;
 
-import com.jcabi.aspects.Timeable;
+import com.padas2.bitbucket.supportzip.response.*;
 import com.padas2.bitbucket.supportzip.api.BitbucketSupportZipTaskStatus;
-import com.padas2.bitbucket.supportzip.api.GitServerDetails;
-import com.padas2.bitbucket.supportzip.components.BitbucketSupportZipCreator;
-import com.padas2.bitbucket.supportzip.components.BitbucketSupportZipDownloader;
-import com.padas2.bitbucket.supportzip.components.BitbucketSupportZipTaskStatusGetter;
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpResponse;
+import com.padas2.bitbucket.supportzip.api.BitbucketServerDetails;
+import com.padas2.bitbucket.supportzip.components.*;
 import org.apache.http.auth.AuthenticationException;
-import org.apache.http.auth.UsernamePasswordCredentials;
-import org.apache.http.client.HttpClient;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.impl.auth.BasicScheme;
-import org.apache.http.impl.client.HttpClientBuilder;
+
 import java.io.File;
 import java.io.IOException;
-import java.sql.Time;
-import java.util.Date;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.logging.Logger;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeoutException;
 
-public class BitbucketSupportZipEngine implements Runnable{
-    private GitServerDetails gitServerDetails;
+public class BitbucketSupportZipEngine {
+    private BitbucketServerDetails bitbucketServerDetails;
     private STATE state = STATE.IDLE;
     private boolean flattenUnzippedDir = false;
     private File finalResultDir ;
 
-    private void setFinalResultDir(File finalResultDir) {
+    public void setFinalResultDir(File finalResultDir) {
         this.finalResultDir = finalResultDir;
+        System.out.println("Final Result Dir can be found @ " + finalResultDir);
     }
 
     public File getFinalResultDir() {
@@ -51,22 +39,24 @@ public class BitbucketSupportZipEngine implements Runnable{
         System.out.println(this.state.toString());
     }
 
-    public BitbucketSupportZipEngine(GitServerDetails gitServerDetails) {
-        this.gitServerDetails = gitServerDetails;
+    public BitbucketSupportZipEngine(BitbucketServerDetails bitbucketServerDetails) {
+        this.bitbucketServerDetails = bitbucketServerDetails;
     }
 
-    private String triggerZipCreation() {
+    private String triggerZipCreation() throws InterruptedException, TimeoutException, ExecutionException, AuthenticationException, IOException{
         setState(STATE.SUPPORT_ZIP_CREATION_INITIATED);
-        BitbucketSupportZipCreator zipCreator = new BitbucketSupportZipCreator();
-        zipCreator.setGitServerDetails(gitServerDetails);
-        String supportZipTaskId = zipCreator.triggerSupportZipCreation();
-        return supportZipTaskId;
+        BitbucketSupportZipCreator zipCreator = new BitbucketSupportZipCreator(bitbucketServerDetails);
+        BitbucketRestApiResponse bitbucketRestApiResponse = zipCreator.run();
+        BitbucketSupportZipCreatorResponse response = (BitbucketSupportZipCreatorResponse)bitbucketRestApiResponse;
+        System.out.println(response.toString());
+        return response.getSupportZipTaskId();
     }
 
-    private BitbucketSupportZipTaskStatus waitTillZipIsCreated(BitbucketSupportZipTaskStatusGetter taskStatusGetter) {
+    private BitbucketSupportZipTaskStatus waitTillZipIsCreated(BitbucketSupportZipTaskStatusGetter taskStatusGetter)
+            throws InterruptedException, TimeoutException, ExecutionException, AuthenticationException, IOException{
         BitbucketSupportZipTaskStatus status ;
         while(true) {
-            status = taskStatusGetter.getStatus();
+            status = ((BitbucketSupportZipTaskStatusResponse)taskStatusGetter.run()).getBitbucketSupportZipTaskStatus();
             if(status.getProgressPercentage() == 100)
                 break;
         }
@@ -74,14 +64,14 @@ public class BitbucketSupportZipEngine implements Runnable{
         return status;
     }
 
-    private String downloadSupportZip(String supportZipName) throws IOException, AuthenticationException{
+    private String downloadSupportZip(String supportZipName)
+            throws InterruptedException, TimeoutException, ExecutionException, AuthenticationException, IOException{
         setState(STATE.SUPPORT_ZIP_DOWNLOAD_INITIATED);
-        BitbucketSupportZipDownloader downloader = new BitbucketSupportZipDownloader();
-        downloader.setGitServerDetails(gitServerDetails);
-        downloader.setSupportZipName(supportZipName);
-        String downloadedZipFileLocation = downloader.download();
+        BitbucketSupportZipDownloader downloader = new BitbucketSupportZipDownloader(bitbucketServerDetails, supportZipName);
+        BitbucketRestApiResponse restApiResponse = downloader.run();
+        BitbucketSupportZipDownloadResponse downloadResponse = (BitbucketSupportZipDownloadResponse)restApiResponse ;
         setState(STATE.SUPPORT_ZIP_DOWNLOAD_FINISHED);
-        return downloadedZipFileLocation;
+        return downloadResponse.getDestinationFilePath();
     }
 
     private String unzip(String downloadedZipFileLocation) {
@@ -94,66 +84,66 @@ public class BitbucketSupportZipEngine implements Runnable{
     }
 
     private File flattenDir(String unzippedDirLocation) {
-        File finalResultDir ;
+        File finalDir;
         if(flattenUnzippedDir) {
             setState(STATE.UNZIPPED_DIR_FLATTENING_INITIATED);
             DirFlattener dirFlattener = new DirFlattener();
             dirFlattener.setRootDir(new File(unzippedDirLocation));
             dirFlattener.flatten();
             setState(STATE.UNZIPPED_DIR_FLATTENING_FINISHED);
-            finalResultDir = dirFlattener.flattenedDir();
+            finalDir = dirFlattener.flattenedDir();
         } else
-            finalResultDir = new File(unzippedDirLocation);
-        return finalResultDir;
+            finalDir = new File(unzippedDirLocation);
+        return finalDir;
     }
 
-    private BitbucketSupportZipTaskStatusGetter getTaskStatusGetter(String taskId) {
-        BitbucketSupportZipTaskStatusGetter taskStatusGetter = new BitbucketSupportZipTaskStatusGetter();
-        taskStatusGetter.setGitServerDetails(gitServerDetails);
-        taskStatusGetter.setTaskId(taskId);
-        return taskStatusGetter;
+    private BitbucketSupportZipTaskStatusGetter getTaskStatusGetterFor(String taskId) {
+        return new BitbucketSupportZipTaskStatusGetter(bitbucketServerDetails, taskId);
     }
 
-    private void checkBitbucketServerStatus() throws IOException, AuthenticationException{
-        try {
-            System.out.println("Triggered check");
-            String url = gitServerDetails.getGitHostUrl();
-            HttpClient client = HttpClientBuilder.create().build();
-            UsernamePasswordCredentials creds = new UsernamePasswordCredentials(gitServerDetails.getGitUser(), gitServerDetails.getGitPassWord());
-            HttpGet request = new HttpGet(url);
-            request.addHeader(new BasicScheme().authenticate(creds, request, null));
-            HttpResponse response = client.execute(request);
-            response.getStatusLine().getStatusCode();
-            System.out.println("Check successful");
-        } catch (AuthenticationException | IOException a) {
-            Logger.getGlobal().warning(a.toString());
-            throw a;
-        }
+    private void checkBitbucketHealth() throws InterruptedException, TimeoutException, ExecutionException, AuthenticationException, IOException{
+        setState(STATE.BITBUCKET_SERVER_HEALTH_CHECK_INITIATED);
+        BitbucketHealthChecker healthChecker = new BitbucketHealthChecker(bitbucketServerDetails);
+        BitbucketRestApiResponse bitbucketRestApiResponse = healthChecker.run();
+        System.out.println(bitbucketRestApiResponse.toString());
+        setState(STATE.BITBUCKET_SERVER_HEALTH_CHECK_FINISHED);
     }
 
-    public void start() throws IOException, AuthenticationException {
-        checkBitbucketServerStatus();
-        String supportZipTaskId = triggerZipCreation();
-        BitbucketSupportZipTaskStatusGetter taskStatusGetter = getTaskStatusGetter(supportZipTaskId);
-        BitbucketSupportZipTaskStatus status  = waitTillZipIsCreated(taskStatusGetter);
-        String downloadedZipFileLocation = downloadSupportZip(status.getBitbucketSupportZipTask().getBitbucketSupportZip().getZipFileName());
-        String unzippedDirLocation = unzip(downloadedZipFileLocation);
-        File flattenedDir = flattenDir(unzippedDirLocation);
-        setFinalResultDir(flattenedDir);
+    private void checkIfProvidedCredentialsAreValid()
+            throws InterruptedException, TimeoutException, ExecutionException, AuthenticationException, IOException{
+        setState(STATE.CREDENTIALS_VALIDITY_CHECK_INITIATED);
+        BitbucketCredentialsValidator validator = new BitbucketCredentialsValidator(bitbucketServerDetails);
+        BitbucketRestApiResponse bitbucketRestApiResponse = validator.run();
+        System.out.println(bitbucketRestApiResponse.toString());
+        setState(STATE.CREDENTIALS_VALIDITY_CHECK_FINISHED);
     }
 
-    @Override
-    public void run() {
-        try {
-            start();
-        } catch (IOException | AuthenticationException e) {
-            e.printStackTrace();
-        }
+    private void checkIfProvidedCredentialsHaveAdminAccess()
+            throws InterruptedException, TimeoutException, ExecutionException, AuthenticationException, IOException{
+        setState(STATE.CREDENTIALS_PERMISSION_CHECK_INITIATED);
+        BitbucketCredentialsPermissionChecker checker = new BitbucketCredentialsPermissionChecker(bitbucketServerDetails);
+        BitbucketCredentialPermissionCheckResponse response = (BitbucketCredentialPermissionCheckResponse)checker.run();
+        System.out.println(response.doesCredentialHaveAdminAccess());
+        setState(STATE.CREDENTIALS_PERMISSION_CHECK_FINISHED);
     }
 
-    public static void main(String[] args) throws IOException, AuthenticationException{
-        GitServerDetails gitServerDetails = new GitServerDetails();
-        BitbucketSupportZipEngine b = new BitbucketSupportZipEngine(gitServerDetails);
+    public void start() throws InterruptedException, TimeoutException, ExecutionException, AuthenticationException, IOException {
+        //checkBitbucketHealth();
+        //checkIfProvidedCredentialsAreValid();
+        checkIfProvidedCredentialsHaveAdminAccess();
+        //String supportZipTaskId = triggerZipCreation();
+        //BitbucketSupportZipTaskStatusGetter taskStatusGetter = getTaskStatusGetterFor(supportZipTaskId);
+        //BitbucketSupportZipTaskStatus finalStatus  = waitTillZipIsCreated(taskStatusGetter);
+        //String downloadedZipFileLocation = downloadSupportZip(finalStatus.getBitbucketSupportZipTask().getBitbucketSupportZip().getZipFileName());
+        //String unzippedDirLocation = unzip(downloadedZipFileLocation);
+        //File flattenedDir = flattenDir(unzippedDirLocation);
+        //setFinalResultDir(flattenedDir);
+    }
+
+    public static void main(String[] args) throws IOException, AuthenticationException, InterruptedException, TimeoutException, ExecutionException {
+        BitbucketServerDetails bitbucketServerDetails = new BitbucketServerDetails();
+        BitbucketSupportZipEngine b = new BitbucketSupportZipEngine(bitbucketServerDetails);
+        b.flattenUnzippedDir();
         b.start();
     }
 }

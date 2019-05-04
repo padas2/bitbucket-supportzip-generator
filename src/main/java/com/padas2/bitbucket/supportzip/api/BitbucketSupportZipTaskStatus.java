@@ -48,4 +48,13 @@ public class BitbucketSupportZipTaskStatus {
     public void setBitbucketSupportZipTask(BitbucketSupportZipTask bitbucketSupportZipTask) {
         this.bitbucketSupportZipTask = bitbucketSupportZipTask;
     }
+
+    @Override
+    public String toString() {
+        return "BitbucketSupportZipTaskStatus{" +
+                "progressPercentage=" + progressPercentage +
+                ", progressMessage='" + progressMessage + '\'' +
+                ", bitbucketSupportZipTask=" + bitbucketSupportZipTask +
+                '}';
+    }
 }

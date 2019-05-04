@@ -20,6 +20,9 @@ dependencies {
     compile group: 'org.apache.httpcomponents', name: 'httpclient', version: '4.5.8'
     compile group: 'org.json', name: 'json', version: '20180813'
     compile group: 'com.jcabi', name: 'jcabi-aspects', version: '0.22.6'
+    compile group: 'com.google.auto.service', name: 'auto-service', version: '1.0-rc2'
+    compile group: 'org.aspectj', name: 'aspectjweaver', version: '1.9.3'
+    compile group: 'org.aspectj', name: 'aspectjrt', version: '1.9.3'
 }
 
 publishing {
@@ -32,3 +35,11 @@ publishing {
         }
     }
 }
+
+/*
+jar {
+    from {
+        configurations.compile.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+    exclude ("META-INF/*SF","META-INF/*SF","META-INF/*SF")
+}*/
