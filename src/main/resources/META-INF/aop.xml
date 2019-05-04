@@ -1,0 +1,11 @@
+<aspectj>
+    <aspects>
+        <aspect name="com.padas2.bitbucket.supportzip.MySimpleLoggerAspect" />
+    </aspects>
+
+    <!--  <weaver options="-verbose -debug -showWeaveInfo"> -->
+    <weaver>
+        <include within="com.padas2.bitbucket.supportzip.*" />
+    </weaver>
+
+</aspectj>
