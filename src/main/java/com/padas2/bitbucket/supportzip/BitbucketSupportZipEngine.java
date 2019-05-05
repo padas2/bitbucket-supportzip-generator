@@ -192,8 +192,12 @@ public class BitbucketSupportZipEngine {
 
     public static void main(String[] args) throws IOException, AuthenticationException, InterruptedException, TimeoutException, ExecutionException {
         BitbucketServerDetails bitbucketServerDetails = new BitbucketServerDetails();
+        bitbucketServerDetails.setGitHostUrl();
+        bitbucketServerDetails.setGitUser();
+        bitbucketServerDetails.setGitPassWord();
         BitbucketSupportZipEngine b = new BitbucketSupportZipEngine(bitbucketServerDetails);
         b.flattenUnzippedDir();
         b.start();
+        b.getFinalResultDir()
     }
 }

@@ -10,3 +10,13 @@ trigger support zip creation(which will contain all the logs we need). This repo
 
 This java based implementation will trigger the REST endpoint to create support zip, wait for its completion, download it 
 and unzip it and provide the final destination of the unzipped directory.
+
+### Usage
+
+    BitbucketServerDetails bitbucketServerDetails = new BitbucketServerDetails();
+    bitbucketServerDetails.setGitHostUrl("HostUrl");
+    bitbucketServerDetails.setGitUser("user");
+    bitbucketServerDetails.setGitPassWord("password");
+    BitbucketSupportZipEngine b = new BitbucketSupportZipEngine(bitbucketServerDetails);
+    b.start();
+    File resultDir = b.getFinalResultDir();
