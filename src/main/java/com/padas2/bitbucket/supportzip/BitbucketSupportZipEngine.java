@@ -5,7 +5,6 @@ import com.padas2.bitbucket.supportzip.api.BitbucketSupportZipTaskStatus;
 import com.padas2.bitbucket.supportzip.api.BitbucketServerDetails;
 import com.padas2.bitbucket.supportzip.components.*;
 import org.apache.http.auth.AuthenticationException;
-
 import java.io.File;
 import java.io.IOException;
 import java.util.concurrent.ExecutionException;
@@ -43,13 +42,13 @@ public class BitbucketSupportZipEngine {
         this.bitbucketServerDetails = bitbucketServerDetails;
     }
 
-    private String triggerZipCreation() throws InterruptedException, TimeoutException, ExecutionException, AuthenticationException, IOException{
+    private BitbucketSupportZipCreatorResponse fireSupportZipCreationAndGetResponse()
+            throws InterruptedException, TimeoutException, ExecutionException, AuthenticationException, IOException{
         setState(STATE.SUPPORT_ZIP_CREATION_INITIATED);
         BitbucketSupportZipCreator zipCreator = new BitbucketSupportZipCreator(bitbucketServerDetails);
         BitbucketRestApiResponse bitbucketRestApiResponse = zipCreator.run();
         BitbucketSupportZipCreatorResponse response = (BitbucketSupportZipCreatorResponse)bitbucketRestApiResponse;
-        System.out.println(response.toString());
-        return response.getSupportZipTaskId();
+        return response;
     }
 
     private BitbucketSupportZipTaskStatus waitTillZipIsCreated(BitbucketSupportZipTaskStatusGetter taskStatusGetter)
@@ -64,14 +63,14 @@ public class BitbucketSupportZipEngine {
         return status;
     }
 
-    private String downloadSupportZip(String supportZipName)
+    private BitbucketSupportZipDownloadResponse fireDownloadSupportZipRequestAndGetResponse(String supportZipName)
             throws InterruptedException, TimeoutException, ExecutionException, AuthenticationException, IOException{
         setState(STATE.SUPPORT_ZIP_DOWNLOAD_INITIATED);
         BitbucketSupportZipDownloader downloader = new BitbucketSupportZipDownloader(bitbucketServerDetails, supportZipName);
         BitbucketRestApiResponse restApiResponse = downloader.run();
         BitbucketSupportZipDownloadResponse downloadResponse = (BitbucketSupportZipDownloadResponse)restApiResponse ;
         setState(STATE.SUPPORT_ZIP_DOWNLOAD_FINISHED);
-        return downloadResponse.getDestinationFilePath();
+        return downloadResponse;
     }
 
     private String unzip(String downloadedZipFileLocation) {
@@ -83,7 +82,7 @@ public class BitbucketSupportZipEngine {
         return unzippedDirLocation;
     }
 
-    private File flattenDir(String unzippedDirLocation) {
+    private File flattenDirIfSpecified(String unzippedDirLocation) {
         File finalDir;
         if(flattenUnzippedDir) {
             setState(STATE.UNZIPPED_DIR_FLATTENING_INITIATED);
@@ -101,43 +100,87 @@ public class BitbucketSupportZipEngine {
         return new BitbucketSupportZipTaskStatusGetter(bitbucketServerDetails, taskId);
     }
 
-    private void checkBitbucketHealth() throws InterruptedException, TimeoutException, ExecutionException, AuthenticationException, IOException{
-        setState(STATE.BITBUCKET_SERVER_HEALTH_CHECK_INITIATED);
-        BitbucketHealthChecker healthChecker = new BitbucketHealthChecker(bitbucketServerDetails);
-        BitbucketRestApiResponse bitbucketRestApiResponse = healthChecker.run();
-        System.out.println(bitbucketRestApiResponse.toString());
-        setState(STATE.BITBUCKET_SERVER_HEALTH_CHECK_FINISHED);
+    private BitbucketCredentialPermissionCheckResponse fireCredentialPermissionCheckAndGetResponse()
+            throws InterruptedException, TimeoutException, ExecutionException, AuthenticationException, IOException{
+        setState(STATE.CREDENTIALS_PERMISSION_CHECK_INITIATED);
+        BitbucketCredentialsPermissionChecker checker = new BitbucketCredentialsPermissionChecker(bitbucketServerDetails);
+        BitbucketCredentialPermissionCheckResponse response = (BitbucketCredentialPermissionCheckResponse)checker.run();
+        setState(STATE.CREDENTIALS_PERMISSION_CHECK_FINISHED);
+
+        return response;
     }
 
-    private void checkIfProvidedCredentialsAreValid()
+    private BitbucketCredentialsExistenceCheckResponse fireCredentialExistenceCheckAndGetResponse()
             throws InterruptedException, TimeoutException, ExecutionException, AuthenticationException, IOException{
         setState(STATE.CREDENTIALS_VALIDITY_CHECK_INITIATED);
         BitbucketCredentialsValidator validator = new BitbucketCredentialsValidator(bitbucketServerDetails);
         BitbucketRestApiResponse bitbucketRestApiResponse = validator.run();
         System.out.println(bitbucketRestApiResponse.toString());
         setState(STATE.CREDENTIALS_VALIDITY_CHECK_FINISHED);
+
+        return (BitbucketCredentialsExistenceCheckResponse) bitbucketRestApiResponse;
     }
 
-    private void checkIfProvidedCredentialsHaveAdminAccess()
+    private BitbucketHealthCheckResponse fireBitbucketHealthCheckAndGetResponse()
             throws InterruptedException, TimeoutException, ExecutionException, AuthenticationException, IOException{
-        setState(STATE.CREDENTIALS_PERMISSION_CHECK_INITIATED);
-        BitbucketCredentialsPermissionChecker checker = new BitbucketCredentialsPermissionChecker(bitbucketServerDetails);
-        BitbucketCredentialPermissionCheckResponse response = (BitbucketCredentialPermissionCheckResponse)checker.run();
-        System.out.println(response.doesCredentialHaveAdminAccess());
-        setState(STATE.CREDENTIALS_PERMISSION_CHECK_FINISHED);
+        setState(STATE.BITBUCKET_SERVER_HEALTH_CHECK_INITIATED);
+        BitbucketHealthChecker healthChecker = new BitbucketHealthChecker(bitbucketServerDetails);
+        BitbucketRestApiResponse bitbucketRestApiResponse = healthChecker.run();
+        System.out.println(bitbucketRestApiResponse.toString());
+        setState(STATE.BITBUCKET_SERVER_HEALTH_CHECK_FINISHED);
+
+        return (BitbucketHealthCheckResponse) bitbucketRestApiResponse;
     }
+
+    private void waitForSupportZipTaskCompletion(String taskId)
+            throws InterruptedException, TimeoutException, ExecutionException, AuthenticationException, IOException{
+        BitbucketSupportZipTaskStatusGetter taskStatusGetter = getTaskStatusGetterFor(taskId);
+        BitbucketSupportZipTaskStatus status ;
+        while(true) {
+            status = getTaskStatusUsing(taskStatusGetter);
+            if(status.getProgressPercentage() == 100)
+                break;
+        }
+        setState(STATE.SUPPORT_ZIP_CREATION_FINISHED);
+    }
+
+    private BitbucketSupportZipTaskStatus getTaskStatusUsing(BitbucketSupportZipTaskStatusGetter statusGetter)
+            throws InterruptedException, TimeoutException, ExecutionException, AuthenticationException, IOException{
+        return ((BitbucketSupportZipTaskStatusResponse)statusGetter.run()).getBitbucketSupportZipTaskStatus();
+    }
+
 
     public void start() throws InterruptedException, TimeoutException, ExecutionException, AuthenticationException, IOException {
-        //checkBitbucketHealth();
-        //checkIfProvidedCredentialsAreValid();
-        checkIfProvidedCredentialsHaveAdminAccess();
-        //String supportZipTaskId = triggerZipCreation();
-        //BitbucketSupportZipTaskStatusGetter taskStatusGetter = getTaskStatusGetterFor(supportZipTaskId);
-        //BitbucketSupportZipTaskStatus finalStatus  = waitTillZipIsCreated(taskStatusGetter);
-        //String downloadedZipFileLocation = downloadSupportZip(finalStatus.getBitbucketSupportZipTask().getBitbucketSupportZip().getZipFileName());
-        //String unzippedDirLocation = unzip(downloadedZipFileLocation);
-        //File flattenedDir = flattenDir(unzippedDirLocation);
-        //setFinalResultDir(flattenedDir);
+        BitbucketHealthCheckResponse healthCheckResponse = fireBitbucketHealthCheckAndGetResponse();
+        if(!healthCheckResponse.isInstanceHealthy())
+            return;
+
+        BitbucketCredentialsExistenceCheckResponse existenceCheckResponse = fireCredentialExistenceCheckAndGetResponse();
+        if(!existenceCheckResponse.doesCredentialExist())
+            return;
+
+        BitbucketCredentialPermissionCheckResponse permissionCheckResponse = fireCredentialPermissionCheckAndGetResponse();
+        if(!permissionCheckResponse.doesCredentialHaveAdminAccess())
+            return;
+
+        BitbucketSupportZipCreatorResponse zipCreatorResponse = fireSupportZipCreationAndGetResponse();
+        String supportZipTaskId = zipCreatorResponse.getSupportZipTaskId();
+
+        waitForSupportZipTaskCompletion(supportZipTaskId);
+
+        BitbucketSupportZipTaskStatusGetter statusGetter = getTaskStatusGetterFor(supportZipTaskId);
+        BitbucketSupportZipTaskStatus finalStatus = getTaskStatusUsing(statusGetter);
+
+        BitbucketSupportZipDownloadResponse downloadResponse = fireDownloadSupportZipRequestAndGetResponse(
+                                                                    finalStatus
+                                                                   .getBitbucketSupportZipTask()
+                                                                   .getBitbucketSupportZip()
+                                                                   .getZipFileName());
+        String downloadedZipFileLocation = downloadResponse.getDestinationFilePath();
+        
+        String unzippedDirLocation = unzip(downloadedZipFileLocation);
+        File flattenedDir = flattenDirIfSpecified(unzippedDirLocation);
+        setFinalResultDir(flattenedDir);
     }
 
     public static void main(String[] args) throws IOException, AuthenticationException, InterruptedException, TimeoutException, ExecutionException {

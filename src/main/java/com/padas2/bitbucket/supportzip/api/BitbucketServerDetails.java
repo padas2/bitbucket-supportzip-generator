@@ -2,8 +2,8 @@ package com.padas2.bitbucket.supportzip.api;
 
 public class BitbucketServerDetails {
     private String gitHostUrl = "http://localhost:7990";
-    private String gitUser = "a";
-    private String gitPassWord = "b";
+    private String gitUser = "user110";
+    private String gitPassWord = "password110";
 
     public String getGitHostUrl() {
         return gitHostUrl;

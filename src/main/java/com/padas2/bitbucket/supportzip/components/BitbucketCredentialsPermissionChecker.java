@@ -29,21 +29,17 @@ public class BitbucketCredentialsPermissionChecker extends BitbucketSupportTimed
             UsernamePasswordCredentials creds = new UsernamePasswordCredentials(bitbucketServerDetails.getGitUser(), bitbucketServerDetails.getGitPassWord());
             HttpGet request = new HttpGet(url + "/rest/api/1.0/admin/permissions/users");
             request.addHeader(new BasicScheme().authenticate(creds, request, null));
-            System.out.println(url + "/rest/api/1.0/admin/permissions/users");
             HttpResponse response = client.execute(request);
             JSONObject jsonObject = getJsonObjectFromResponse(response);
             bitbucketRestApiResponse = new BitbucketCredentialPermissionCheckResponse(jsonObject);
-            System.out.println(jsonObject);
             BitbucketCredentialPermissionCheckResponse permissionCheckResponse = (BitbucketCredentialPermissionCheckResponse)bitbucketRestApiResponse;
             Integer lastPage = null;
             while(!jsonObject.has("errors") && !jsonObject.getBoolean("isLastPage")) {
-                System.out.println(url + "/rest/api/1.0/admin/permissions/users?start=" + jsonObject.get("nextPageStart"));
                 request = new HttpGet(url + "/rest/api/1.0/admin/permissions/users?start=" + jsonObject.get("nextPageStart"));
                 request.addHeader(new BasicScheme().authenticate(creds, request, null));
                 response = client.execute(request);
                 jsonObject = getJsonObjectFromResponse(response);
                 permissionCheckResponse.addInput(jsonObject);
-                System.out.println(jsonObject);
                 lastPage = jsonObject.has("nextPageStart") ? jsonObject.getInt("nextPageStart") : null;
             }
             request = new HttpGet(url + "/rest/api/1.0/admin/permissions/users?start=" + lastPage);

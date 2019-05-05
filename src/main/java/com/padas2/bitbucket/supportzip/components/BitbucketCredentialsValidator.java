@@ -1,7 +1,7 @@
 package com.padas2.bitbucket.supportzip.components;
 
 import com.padas2.bitbucket.supportzip.BitbucketSupportTimedLimitedInteraction;
-import com.padas2.bitbucket.supportzip.response.BitbucketCredentialsValidatorResponse;
+import com.padas2.bitbucket.supportzip.response.BitbucketCredentialsExistenceCheckResponse;
 import com.padas2.bitbucket.supportzip.api.BitbucketServerDetails;
 import org.apache.http.HttpResponse;
 import org.apache.http.auth.AuthenticationException;
@@ -29,7 +29,7 @@ public class BitbucketCredentialsValidator extends BitbucketSupportTimedLimitedI
             get.addHeader(new BasicScheme().authenticate(creds, get, null));
             HttpResponse response = client.execute(get);
             JSONObject jsonObject = getJsonObjectFromResponse(response);
-            bitbucketRestApiResponse = new BitbucketCredentialsValidatorResponse(jsonObject);
+            bitbucketRestApiResponse = new BitbucketCredentialsExistenceCheckResponse(jsonObject);
         } catch (AuthenticationException a) {
             authenticationException = a;
         } catch (IOException io) {

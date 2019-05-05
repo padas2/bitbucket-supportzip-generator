@@ -2,8 +2,8 @@ package com.padas2.bitbucket.supportzip.response;
 
 import org.json.JSONObject;
 
-public class BitbucketCredentialsValidatorResponse extends BitbucketRestApiResponse{
-    public BitbucketCredentialsValidatorResponse(JSONObject bitbucketRestApiResponse) {
+public class BitbucketCredentialsExistenceCheckResponse extends BitbucketRestApiResponse{
+    public BitbucketCredentialsExistenceCheckResponse(JSONObject bitbucketRestApiResponse) {
         super(bitbucketRestApiResponse);
     }
 
