@@ -115,7 +115,6 @@ public class BitbucketSupportZipEngine {
         setState(STATE.CREDENTIALS_VALIDITY_CHECK_INITIATED);
         BitbucketCredentialsValidator validator = new BitbucketCredentialsValidator(bitbucketServerDetails);
         BitbucketRestApiResponse bitbucketRestApiResponse = validator.run();
-        System.out.println(bitbucketRestApiResponse.toString());
         setState(STATE.CREDENTIALS_VALIDITY_CHECK_FINISHED);
 
         return (BitbucketCredentialsExistenceCheckResponse) bitbucketRestApiResponse;
@@ -126,7 +125,6 @@ public class BitbucketSupportZipEngine {
         setState(STATE.BITBUCKET_SERVER_HEALTH_CHECK_INITIATED);
         BitbucketHealthChecker healthChecker = new BitbucketHealthChecker(bitbucketServerDetails);
         BitbucketRestApiResponse bitbucketRestApiResponse = healthChecker.run();
-        System.out.println(bitbucketRestApiResponse.toString());
         setState(STATE.BITBUCKET_SERVER_HEALTH_CHECK_FINISHED);
 
         return (BitbucketHealthCheckResponse) bitbucketRestApiResponse;
@@ -152,16 +150,25 @@ public class BitbucketSupportZipEngine {
 
     public void start() throws InterruptedException, TimeoutException, ExecutionException, AuthenticationException, IOException {
         BitbucketHealthCheckResponse healthCheckResponse = fireBitbucketHealthCheckAndGetResponse();
-        if(!healthCheckResponse.isInstanceHealthy())
+        if(!healthCheckResponse.isInstanceHealthy()) {
+            System.out.println(healthCheckResponse.toString());
             return;
+        }
+
 
         BitbucketCredentialsExistenceCheckResponse existenceCheckResponse = fireCredentialExistenceCheckAndGetResponse();
-        if(!existenceCheckResponse.doesCredentialExist())
+        if(!existenceCheckResponse.doesCredentialExist()) {
+            System.out.println(existenceCheckResponse.toString());
             return;
+        }
+
 
         BitbucketCredentialPermissionCheckResponse permissionCheckResponse = fireCredentialPermissionCheckAndGetResponse();
-        if(!permissionCheckResponse.doesCredentialHaveAdminAccess())
+        if(!permissionCheckResponse.doesCredentialHaveAdminAccess()) {
+            System.out.println(permissionCheckResponse.toString());
             return;
+        }
+
 
         BitbucketSupportZipCreatorResponse zipCreatorResponse = fireSupportZipCreationAndGetResponse();
         String supportZipTaskId = zipCreatorResponse.getSupportZipTaskId();

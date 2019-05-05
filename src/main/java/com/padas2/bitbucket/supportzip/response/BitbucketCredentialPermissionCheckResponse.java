@@ -44,4 +44,10 @@ public class BitbucketCredentialPermissionCheckResponse extends BitbucketRestApi
         }
         return doesCredentialHaveAdminAccess;
     }
+
+    @Override
+    public String toString() {
+        return "Passed credentials " + (doesCredentialHaveAdminAccess() ? " have admin access at the minimum " :
+                                                                          " do not have even have admin access");
+    }
 }
