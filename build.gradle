@@ -1,5 +1,5 @@
 group 'com.padas2.bitbucket.supportzip'
-version '0.0.1-SNAPSHOT'
+version '0.0.2-SNAPSHOT'
 
 apply plugin: 'java'
 apply plugin: 'maven'
@@ -30,7 +30,7 @@ publishing {
     publications {
         client(MavenPublication) {
             groupId group
-            artifactId "bitbucket-support-generator"
+            artifactId "bitbucket-supportzip-generator"
             version version
             from components.java
         }
