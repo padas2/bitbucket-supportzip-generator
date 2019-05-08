@@ -13,8 +13,8 @@ import org.apache.http.impl.client.HttpClientBuilder;
 import org.json.JSONObject;
 import java.io.IOException;
 
-public class BitbucketCredentialsValidator extends BitbucketSupportTimedLimitedInteraction{
-    public BitbucketCredentialsValidator(BitbucketServerDetails bitbucketServerDetails) {
+public class BitbucketCredentialsExistenceChecker extends BitbucketSupportTimedLimitedInteraction{
+    public BitbucketCredentialsExistenceChecker(BitbucketServerDetails bitbucketServerDetails) {
         super(bitbucketServerDetails);
     }
 

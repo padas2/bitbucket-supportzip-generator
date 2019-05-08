@@ -6,7 +6,13 @@ import org.apache.http.auth.AuthenticationException;
 import java.io.IOException;
 import java.util.concurrent.*;
 
-abstract public class BitbucketSupportTimedLimitedInteraction<T> extends BitbucketSupportInteraction implements TimeRestrained{
+abstract public class BitbucketSupportTimedLimitedInteraction extends BitbucketSupportInteraction implements TimeRestrained{
+    private int timeLimit = 1;
+
+    public void setTimeLimit(int timeLimit) {
+        this.timeLimit = timeLimit;
+    }
+
     public BitbucketSupportTimedLimitedInteraction(BitbucketServerDetails bitbucketServerDetails) {
         super(bitbucketServerDetails);
     }
@@ -24,7 +30,7 @@ abstract public class BitbucketSupportTimedLimitedInteraction<T> extends Bitbuck
         });
 
         try {
-            future.get(1, TimeUnit.MINUTES);
+            future.get(timeLimit, TimeUnit.MINUTES);
         } catch (InterruptedException | TimeoutException | ExecutionException e) {
             future.cancel(true);
             e.printStackTrace();

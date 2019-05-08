@@ -1,5 +1,5 @@
 group 'com.padas2.bitbucket.supportzip'
-version '0.0.8-SNAPSHOT'
+version '0.1.1-SNAPSHOT'
 
 apply plugin: 'java'
 apply plugin: 'maven'
