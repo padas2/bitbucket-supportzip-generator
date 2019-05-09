@@ -33,7 +33,7 @@ public class BitbucketSupportZipEngine {
         this.flattenUnzippedDir = true;
     }
 
-    private void setState(STATE state) {
+    public void setState(STATE state) {
         this.state = state;
     }
 
