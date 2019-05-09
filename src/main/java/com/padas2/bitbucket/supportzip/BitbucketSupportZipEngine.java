@@ -169,12 +169,14 @@ public class BitbucketSupportZipEngine {
         BitbucketCredentialsExistenceCheckResponse existenceCheckResponse = fireCredentialExistenceCheckAndGetResponse();
         if(!existenceCheckResponse.doesCredentialExist()) {
             System.out.println(existenceCheckResponse.toString());
+            setStateAndPrintTheSame(STATE.BITBUCKET_CREDENTIALS_EXISTENCE_CHECK_FAILED);
             return;
         }
 
         BitbucketCredentialPermissionCheckResponse permissionCheckResponse = fireCredentialPermissionCheckAndGetResponse();
         if(!permissionCheckResponse.doesCredentialHaveAdminAccess()) {
             System.out.println(permissionCheckResponse.toString());
+            setStateAndPrintTheSame(STATE.BITBUCKET_CREDENTIALS_PERMISSION_CHECK_FAILED);
             return;
         }
 
