@@ -1,6 +1,6 @@
 package com.padas2.bitbucket.supportzip;
 
-import com.padas2.bitbucket.supportzip.api.BitbucketServerDetails;
+import com.padas2.bitbucket.supportzip.api.BitbucketSupportZipTaskStatus;
 import com.padas2.bitbucket.supportzip.components.*;
 import com.padas2.bitbucket.supportzip.response.*;
 import org.apache.http.HttpResponse;
@@ -10,27 +10,10 @@ import org.apache.http.impl.client.HttpClientBuilder;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import java.io.File;
 import java.io.IOException;
 
-public class BitbucketSupportZipComponentsTest {
-    private static BitbucketServerDetails bitbucketServerDetails = new BitbucketServerDetails();
-
-    private static void printRequiredEnvVariablesMessage() {
-        System.out.println("#######################################################################");
-        System.out.println("###");
-        System.out.println("### The following environment variables have to be set to their ");
-        System.out.println("### corresponding values to run unit tests");
-        System.out.println("### BITBUCKET_URL , BITBUCKET_ADMIN_USER , BITBUCKET_ADMIN_PWD");
-        System.out.println("###");
-        System.out.println("#######################################################################");
-    }
-
-    private static void initBitbucketServerDetails() {
-        printRequiredEnvVariablesMessage();
-        bitbucketServerDetails.setGitHostUrl(System.getenv().get("BIBTUCKET_URL"));
-        bitbucketServerDetails.setGitUser(System.getenv().get("BITBUCKET_ADMIN_USER"));
-        bitbucketServerDetails.setGitPassWord(System.getenv().get("BITBUCKET_ADMIN_PWD"));
-    }
+public class BitbucketSupportZipComponentsTest extends BitbucketSupportZipTest{
 
     @BeforeClass
     public static void checkForBitbucketServerExistence() {
@@ -88,7 +71,7 @@ public class BitbucketSupportZipComponentsTest {
             e.printStackTrace();
         }
     }
-    
+
     private BitbucketSupportZipCreatorResponse createSupportZipAndGetResponse() {
         try {
             BitbucketSupportZipCreator creator = new BitbucketSupportZipCreator(bitbucketServerDetails);
@@ -99,7 +82,7 @@ public class BitbucketSupportZipComponentsTest {
         } catch (Exception e) {
             e.printStackTrace();
         }
-        return null;        
+        return null;
     }
 
     @Test
@@ -110,14 +93,43 @@ public class BitbucketSupportZipComponentsTest {
         Assert.assertTrue(!response.getSupportZipTaskId().isEmpty());
     }
 
+    public BitbucketSupportZipTaskStatusGetter getTaskStatusGetter(String supportZipTaskId) {
+        BitbucketSupportZipTaskStatusGetter zipTaskStatusGetter = new BitbucketSupportZipTaskStatusGetter(bitbucketServerDetails, supportZipTaskId);
+        zipTaskStatusGetter.setTimeLimit(2);
+        return zipTaskStatusGetter;
+    }
+
     @Test
     public void testBitbucketSupportZipTaskStatusGetter() {
         try {
             String supportZipTaskId = createSupportZipAndGetResponse().getSupportZipTaskId();
-            BitbucketSupportZipTaskStatusGetter zipTaskStatusGetter = new BitbucketSupportZipTaskStatusGetter(bitbucketServerDetails, supportZipTaskId);
-            zipTaskStatusGetter.setTimeLimit(2);
-            BitbucketSupportZipTaskStatusResponse taskStatusResponse = (BitbucketSupportZipTaskStatusResponse)zipTaskStatusGetter.run();
+            BitbucketSupportZipTaskStatusGetter taskStatusGetter = getTaskStatusGetter(supportZipTaskId);
+            BitbucketSupportZipTaskStatusResponse taskStatusResponse = (BitbucketSupportZipTaskStatusResponse)taskStatusGetter.run();
             Assert.assertNotNull(taskStatusResponse);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Test
+    public void testBitbucketSupportZipDownloader() {
+        try {
+            String supportZipTaskId = createSupportZipAndGetResponse().getSupportZipTaskId();
+            BitbucketSupportZipTaskStatusGetter taskStatusGetter = getTaskStatusGetter(supportZipTaskId);
+            BitbucketSupportZipTaskStatus status;
+            while(true) {
+                status = ((BitbucketSupportZipTaskStatusResponse)taskStatusGetter.run()).getBitbucketSupportZipTaskStatus();
+                if(status.getProgressPercentage() == 100)
+                    break;
+            }
+            status = ((BitbucketSupportZipTaskStatusResponse)taskStatusGetter.run()).getBitbucketSupportZipTaskStatus();
+            String finalZipFileName = status.getBitbucketSupportZipTask().getBitbucketSupportZip().getZipFileName();
+
+            BitbucketSupportZipDownloader downloader = new BitbucketSupportZipDownloader(bitbucketServerDetails, finalZipFileName);
+            BitbucketSupportZipDownloadResponse downloadResponse = (BitbucketSupportZipDownloadResponse)downloader.run();
+            File finalZipFile = new File(downloadResponse.getDestinationFilePath());
+            System.out.println("Final Zip file is @ " + finalZipFile.getAbsolutePath());
+            Assert.assertTrue(finalZipFile.exists());
         } catch (Exception e) {
             e.printStackTrace();
         }
