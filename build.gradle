@@ -1,5 +1,5 @@
 group 'com.padas2.bitbucket.supportzip'
-version '0.0.5-SNAPSHOT'
+version '0.0.3-SNAPSHOT'
 
 apply plugin: 'java'
 apply plugin: 'maven'
@@ -14,8 +14,6 @@ repositories {
 
 dependencies {
     testCompile group: 'junit', name: 'junit', version: '4.12'
-    compile "com.padas2.file.splitter:file-splitter:2.0-SNAPSHOT"
-    compile group: 'org.apache.httpcomponents', name: 'httpclient', version: '4.5.8'
     compile group: 'net.lingala.zip4j', name: 'zip4j', version: '1.3.2'
     compile group: 'org.apache.httpcomponents', name: 'httpclient', version: '4.5.8'
     compile group: 'org.json', name: 'json', version: '20180813'
@@ -36,11 +34,3 @@ publishing {
         }
     }
 }
-
-/*
-jar {
-    from {
-        configurations.compile.collect { it.isDirectory() ? it : zipTree(it) }
-    }
-    exclude ("META-INF/*SF","META-INF/*SF","META-INF/*SF")
-}*/
